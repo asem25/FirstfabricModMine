@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+option java_package = "ru.semavin.proto";
+option java_outer_classname = "MessageOuterClass";
+
+message Message {
+  string text = 1;
+}
