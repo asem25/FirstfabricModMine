@@ -1,34 +1,45 @@
-package ru.semavin.fabricmod;
+package ru.semavin;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.network.FriendlyByteBuf;
-import ru.semavin.net.Packets;
+import ru.semavin.db.repo.MessageRepo;
+import ru.semavin.entity.MessageEntity;
+import ru.semavin.net.ChatMsgPayload;
+import ru.semavin.proto.*;
 
-public class ExampleMod implements ModInitializer {
+import java.util.UUID;
+
+public final class ExampleMod implements ModInitializer {
+
+    private static MessageRepo repo;
+
     @Override
     public void onInitialize() {
-        ServerPlayNetworking.registerGlobalReceiver(Packets.CHAT_MSG, (server, player, handler, buf, sender) -> {
-            byte[] bytes = read(buf);
-            if (bytes == null) return;
+        repo = new MessageRepo();
+
+        PayloadTypeRegistry.playC2S().register(ChatMsgPayload.TYPE, ChatMsgPayload.CODEC);
+
+        ServerPlayNetworking.registerGlobalReceiver(ChatMsgPayload.TYPE, (payload, ctx) -> {
+            byte[] bytes = payload.data();
+            if (bytes == null || bytes.length == 0) return;
 
             try {
                 var msg = MessageOuterClass.Message.parseFrom(bytes);
-                var uuid = player.getUUID();
-                var text = msg.getText();
+                String text = msg.getText();
                 if (text == null || text.isBlank()) return;
 
-                server.execute(() -> {
-                    // сохранить в БД (как раньше)
-                });
+                UUID uuid = ctx.player().getUUID();
+                ctx.server().execute(() -> repo.save(new MessageEntity(uuid, trim256(text))));
             } catch (Exception e) {
                 e.printStackTrace();
             }
         });
     }
 
-    private static byte[] read(FriendlyByteBuf buf) {
-        try { return buf.readByteArray(); } catch (Exception e) { return null; }
+    private static String trim256(String s) {
+        return (s.length() <= 256) ? s : s.substring(0, 256);
     }
 }
+
 

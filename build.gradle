@@ -1,19 +1,54 @@
 plugins {
     id 'java'
+    id 'fabric-loom' version '1.11.+'
+    id 'com.google.protobuf' version '0.9.4'
 }
 
-group = 'ru.semavin'
-version = '1.0-SNAPSHOT'
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(21) }
+    withSourcesJar()
+}
 
 repositories {
     mavenCentral()
+    maven { url = "https://maven.fabricmc.net/" }
 }
 
 dependencies {
-    testImplementation platform('org.junit:junit-bom:5.10.0')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+
+    implementation "com.google.protobuf:protobuf-java:3.25.3"
+
+    implementation "org.hibernate.orm:hibernate-core:6.6.0.Final"
+    implementation "com.zaxxer:HikariCP:5.1.0"
+    implementation "org.postgresql:postgresql:42.7.4"
+
+    implementation "org.slf4j:slf4j-simple:2.0.13"
 }
 
-test {
-    useJUnitPlatform()
+loom {
+    splitEnvironmentSourceSets()
+}
+
+sourceSets {
+    main {
+        resources.srcDir "src/main/proto"
+    }
+}
+
+protobuf {
+    protoc { artifact = "com.google.protobuf:protoc:3.25.3" }
+}
+
+tasks.register('copyProtoToResources', Copy) {
+    from 'src/main/proto'
+    into 'build/resources/main'
+}
+processResources.dependsOn(copyProtoToResources)
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
 }

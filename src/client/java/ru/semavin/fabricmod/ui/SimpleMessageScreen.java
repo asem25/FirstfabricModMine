@@ -1,11 +1,14 @@
-package ru.semavin.ui;
+package ru.semavin.fabricmod.ui;
 
-import io.netty.buffer.Unpooled;
-
-import net.minecraft.network.FriendlyByteBuf;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-
-import static jdk.internal.org.jline.terminal.Terminal.MouseTracking.Button;
+import ru.semavin.net.ChatMsgPayload;
+import ru.semavin.proto.*;
 
 public class SimpleMessageScreen extends Screen {
     private EditBox input;
@@ -24,7 +27,7 @@ public class SimpleMessageScreen extends Screen {
         input.setMaxLength(256);
         input.setValue("");
         input.setFocused(true);
-        input.setResponder(s -> {}); // no-op
+        input.setResponder(s -> {});
 
         this.addRenderableWidget(input);
 
@@ -40,21 +43,19 @@ public class SimpleMessageScreen extends Screen {
         String text = input.getValue().trim();
         if (text.isEmpty()) return;
 
-        var msg = MessageOuterClass.Message.newBuilder().setText(text).build();
-        byte[] bytes = msg.toByteArray();
+        var msg = MessageOuterClass.Message.newBuilder()
+                .setText(text)
+                .build();
 
-        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-        buf.writeByteArray(bytes);
-
-        ClientPlayNetworking.send(Packets.CHAT_MSG, buf);
+        ClientPlayNetworking.send(new ChatMsgPayload(msg.toByteArray()));
         Minecraft.getInstance().setScreen(null);
     }
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
-        this.renderBackground(g);
+        this.renderBackground(g, mouseX, mouseY, delta);
         super.render(g, mouseX, mouseY, delta);
-        g.drawCenteredString(this.font, "Введите сообщение (до 256 символов)",
+        g.drawCenteredString(this.font, "Введите сообщение",
                 this.width / 2, this.height / 2 - 30, 0xFFFFFF);
         input.render(g, mouseX, mouseY, delta);
     }
